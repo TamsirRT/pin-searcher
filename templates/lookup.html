@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find PIN - MealMode</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .logout-btn {
+            background: #666;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #555;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+        }
+
+        .results-box {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .results-box.show {
+            display: block;
+        }
+
+        .student-result {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .student-result:hover {
+            background: #f0f0f0;
+            border-color: #4CAF50;
+            transform: translateX(4px);
+        }
+
+        .student-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .student-info {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .no-results {
+            color: #999;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+        }
+
+        .pin-display-box {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+            display: none;
+        }
+
+        .pin-display-box.show {
+            display: block;
+        }
+
+        .student-name-display {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .pin-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .pin-number {
+            font-size: 80px;
+            font-weight: bold;
+            color: #4CAF50;
+            letter-spacing: 12px;
+            font-family: 'Courier New', monospace;
+            margin: 20px 0;
+        }
+
+        .clear-btn {
+            background: #ddd;
+            color: #333;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .clear-btn:hover {
+            background: #ccc;
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .pin-number {
+                font-size: 60px;
+                letter-spacing: 8px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .logout-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Find PIN</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Search by name..."
+                autocomplete="off"
+                autofocus
+            >
+        </div>
+
+        <div class="results-box" id="resultsBox">
+            <div id="resultsList"></div>
+        </div>
+
+        <div class="pin-display-box" id="pinDisplay">
+            <div class="student-name-display" id="displayName"></div>
+            <div class="pin-label">PIN</div>
+            <div class="pin-number" id="displayPin"></div>
+            <button class="clear-btn" onclick="clearPin()">Clear</button>
+        </div>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const resultsBox = document.getElementById('resultsBox');
+        const resultsList = document.getElementById('resultsList');
+        const pinDisplay = document.getElementById('pinDisplay');
+
+        let searchTimeout;
+
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+
+            if (query.length === 0) {
+                resultsBox.classList.remove('show');
+                pinDisplay.classList.remove('show');
+                return;
+            }
+
+            searchTimeout = setTimeout(() => {
+                performSearch(query);
+            }, 100);
+        });
+
+        async function performSearch(query) {
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                
+                if (response.status === 401) {
+                    window.location.href = '/';
+                    return;
+                }
+
+                const results = await response.json();
+
+                if (results.length === 0) {
+                    resultsList.innerHTML = '<div class="no-results">No students found</div>';
+                    resultsBox.classList.add('show');
+                    pinDisplay.classList.remove('show');
+                    return;
+                }
+
+                resultsList.innerHTML = results.map(student => `
+                    <div class="student-result" onclick="showPin(this)">
+                        <div class="student-name">${student.full_name || student.first_name + ' ' + student.last_name}</div>
+                        <div class="student-info">Grade ${student.grade_level || '-'} | ID: ${student.id || '-'}</div>
+                        <input type="hidden" class="pin-data" value="${student.pin}">
+                        <input type="hidden" class="name-data" value="${student.full_name || student.first_name + ' ' + student.last_name}">
+                    </div>
+                `).join('');
+
+                resultsBox.classList.add('show');
+                pinDisplay.classList.remove('show');
+            } catch (error) {
+                resultsList.innerHTML = '<div class="no-results">Error searching: ' + error.message + '</div>';
+                resultsBox.classList.add('show');
+            }
+        }
+
+        function showPin(element) {
+            const pin = element.querySelector('.pin-data').value;
+            const name = element.querySelector('.name-data').value;
+
+            document.getElementById('displayName').textContent = name;
+            document.getElementById('displayPin').textContent = pin || '----';
+            pinDisplay.classList.add('show');
+            resultsBox.classList.remove('show');
+        }
+
+        function clearPin() {
+            pinDisplay.classList.remove('show');
+            searchInput.value = '';
+            searchInput.focus();
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/';
+            } catch (error) {
+                window.location.href = '/';
+            }
+        }
+    </script>
+</body>
+</html>
